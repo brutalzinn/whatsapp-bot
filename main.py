@@ -6,22 +6,54 @@ import time
 import urllib
 import os
 import sys
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait
+import zxing
+from PIL import Image
+from io import BytesIO
+
+
 
 dir_path = os.getcwd()
-profile = os.path.join(dir_path, "profile", "whatever.selenium")
-options = Options()
+profile = os.path.join(dir_path, "profile")
+options = webdriver.ChromeOptions()
+options.add_argument(f"user-data-dir={profile}")
+#navegador = webdriver.Chrome(executable_path=os.path.join(dir_path, "chromedriver.exe"),options=options)
+navegador = webdriver.Chrome(executable_path=os.path.join(dir_path, "chromedriver.exe"))
 
-options.add_argument("-profile")
-options.add_argument(profile)
-firefox_capabilities = DesiredCapabilities.FIREFOX
-firefox_capabilities['marionette'] = True
-navegador = webdriver.Firefox(executable_path=os.path.join(dir_path, "geckodriver.exe"),capabilities=firefox_capabilities, firefox_options=options)
+reader = zxing.BarCodeReader()
+canvasfile = r"canvas.png"
 navegador.get("https://web.whatsapp.com/")
 while len(navegador.find_elements_by_id("side")) < 1:
+   if len(navegador.find_elements_by_class_name("_2UwZ_")) > 0:
+    print('achei o qr code')
+    element = navegador.find_element_by_xpath("/html/body/div[1]/div[1]/div/div[2]/div[1]/div/div[2]/div")
+    location = element.location
+    size = element.size
+    png = navegador.get_screenshot_as_png() # saves screenshot of entire page
+
+    screenshot = Image.open(BytesIO(png)) 
+    left = location['x']
+    top = location['y']
+    right = location['x'] + size['width']
+    bottom = location['y'] + size['height']
+    screenshot = screenshot.crop((left, top, right, bottom)) # defines crop points
+    store_width = 300
+    store_height = 300
+    width, height = screenshot.size
+
+    # Create an image with the desired size for the store
+    im = Image.new('RGBA', (store_width, store_height), color=(255, 255, 255))
+
+    # Paste the screenshot on the background and center it
+    im.paste(screenshot, (
+        int(store_width/2 - width/2),
+        int(store_height/2 - height/2)
+    ), screenshot)
+    im.save(canvasfile) # saves new cropped image
+    
    time.sleep(1)
 contatos_df = pd.read_json("contatos.json")
 for i, item in enumerate(contatos_df["mensagem"]):
